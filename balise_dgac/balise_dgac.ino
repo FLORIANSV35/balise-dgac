@@ -1,7 +1,7 @@
 // =============================================================
-// BALISE DGAC — ESP32-C3
-// Émet une balise DGAC (Remote ID, WiFi beacon canal 6) à partir
-// du GPS d'un contrôleur de vol Betaflight lu en MSP.
+// DGAC BEACON — ESP32-C3
+// Transmits a DGAC beacon (Remote ID, WiFi beacon channel 6) from
+// the GPS of a Betaflight flight controller read over MSP.
 // =============================================================
 
 #include <Arduino.h>
@@ -9,7 +9,7 @@
 #include "esp_wifi.h"
 
 // =========================
-// MSP DEFINITIONS (GELÉ)
+// MSP DEFINITIONS (FROZEN)
 // =========================
 #define MSP_STATUS    101
 #define MSP_RAW_GPS   106
@@ -21,7 +21,7 @@
 HardwareSerial FC(0);
 
 // =========================
-// LED simple active LOW GPIO8 (GELÉ)
+// Simple active-LOW LED on GPIO8 (FROZEN)
 // =========================
 #define LED_PIN 8
 
@@ -30,7 +30,7 @@ inline void setLed(bool on){
 }
 
 // =========================
-// DGAC HELPERS BIG-ENDIAN (GELÉ)
+// DGAC HELPERS BIG-ENDIAN (FROZEN)
 // =========================
 inline void w16(uint8_t*b,size_t&p,uint16_t v){
   b[p++]=(v>>8)&0xFF; b[p++]=v&0xFF;
@@ -60,16 +60,16 @@ inline void tlv_bytes(uint8_t*b,size_t&p,uint8_t t,const void*s,uint8_t l){
 }
 
 // =========================
-// DGAC IDs (GELÉ)
+// DGAC IDs (FROZEN)
 // =========================
-// À REMPLACER par ton propre identifiant DGAC (30 caractères exactement)
+// REPLACE with your own DGAC identifier (exactly 30 characters)
 static const char ID_FR[31] = "000XXX000000000000000000000000";
 
 const char    *BEACON_SSID = "RID-FR-BALISE";
-uint8_t        mac_balise[6] = {0x02,0x11,0x22,0x33,0x44,0x55};
+uint8_t        mac_beacon[6] = {0x02,0x11,0x22,0x33,0x44,0x55};
 
 // =========================
-// BEACON BUFFER (GELÉ)
+// BEACON BUFFER (FROZEN)
 // =========================
 #define BEACON_MAX 256
 uint8_t  beacon_frame[BEACON_MAX];
@@ -77,7 +77,7 @@ size_t   beacon_static_len = 0;
 size_t   beacon_len = 0;
 
 // =========================
-// STATE VARIABLES (GELÉ)
+// STATE VARIABLES (FROZEN)
 // =========================
 float    LAT_HOME_dyn = 0, LON_HOME_dyn = 0;
 bool     home_set = false;
@@ -94,7 +94,7 @@ uint32_t last_fc_time = 0;
 bool     armed = false, gps_ready = false;
 
 // =========================
-// DISTANCE (GELÉ) — sert au déclenchement d'émission tous les 30 m
+// DISTANCE (FROZEN) — used to trigger a transmission every 30 m
 // =========================
 inline float dist_approx_m(float lat1,float lon1,float lat2,float lon2){
   const float K = 111320.0f;
@@ -104,7 +104,7 @@ inline float dist_approx_m(float lat1,float lon1,float lat2,float lon2){
 }
 
 // =========================
-// MSP (GELÉ)
+// MSP (FROZEN)
 // =========================
 uint8_t msp_crc(uint8_t*b,uint8_t len){
   uint8_t c=0; for(uint8_t i=0;i<len;i++) c^=b[i]; return c;
@@ -163,7 +163,7 @@ void readMSP(){
 }
 
 // =========================
-// DGAC PAYLOAD (GELÉ)
+// DGAC PAYLOAD (FROZEN)
 // =========================
 void build_dgac_tlv_payload(uint8_t*b,size_t&p){
   int32_t la=0,lo=0;
@@ -183,7 +183,7 @@ void build_beacon_static(){
   size_t p=0; uint8_t*b=beacon_frame;
   b[p++]=0x80; b[p++]=0x00; b[p++]=0x00; b[p++]=0x00;
   memset(&b[p],0xFF,6); p+=6;
-  wb(b,p,mac_balise,6); wb(b,p,mac_balise,6);
+  wb(b,p,mac_beacon,6); wb(b,p,mac_beacon,6);
   b[p++]=0; b[p++]=0;
   memset(&b[p],0,8); p+=8;
   b[p++]=0x64; b[p++]=0x00; b[p++]=0x11; b[p++]=0x04;
@@ -221,19 +221,19 @@ void setup(){
 
   WiFi.mode(WIFI_MODE_STA);
   esp_wifi_set_channel(6, WIFI_SECOND_CHAN_NONE);
-  esp_wifi_set_max_tx_power(78); // 19.5 dBm = maximum exposé par l'API (unités de 0.25dBm)
+  esp_wifi_set_max_tx_power(78); // 19.5 dBm = maximum exposed by the API (units of 0.25dBm)
   esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
 
   build_beacon_static();
 
-  Serial.println("[BALISE] prete");
+  Serial.println("[BEACON] ready");
 }
 
 void loop(){
   readMSP();
 
   if(!gps_ready){
-    // Pas de GPS : beacon inactive, LED éteinte
+    // No GPS: beacon inactive, LED off
     setLed(false);
     delay(5);
     return;
@@ -259,6 +259,6 @@ void loop(){
     last_emit_lon=fc_lon;
   }
 
-  setLed(true); // LED fixe : la balise émet
+  setLed(true); // solid LED: the beacon is transmitting
   delay(5);
 }
